@@ -89,6 +89,17 @@ export function whack(state: WhackAMoleState, x: number, y: number): boolean {
   return true;
 }
 
+/** Runs the clock, the moles and the spawn countdown forward by `dt` seconds. */
+function advance(state: WhackAMoleState, dt: number) {
+  state.timeLeft = Math.max(state.timeLeft - dt, 0);
+  for (const hole of state.holes) hole.upFor = Math.max(hole.upFor - dt, 0);
+  state.spawnIn -= dt;
+  if (state.timeLeft === 0) {
+    for (const hole of state.holes) hole.upFor = 0;
+    state.phase = 'over';
+  }
+}
+
 /**
  * Advances the game by `dt` seconds. `random` picks which empty hole the next
  * mole pops up from, and returns a number in [0, 1) like Math.random.
@@ -98,23 +109,21 @@ export function step(state: WhackAMoleState, dt: number, random: () => number = 
   state.bonks = state.bonks.filter((b) => b.age < 0.3);
   if (state.phase !== 'playing') return;
 
-  state.timeLeft = Math.max(state.timeLeft - dt, 0);
-  for (const hole of state.holes) hole.upFor = Math.max(hole.upFor - dt, 0);
-
-  if (state.timeLeft === 0) {
-    for (const hole of state.holes) hole.upFor = 0;
-    state.phase = 'over';
-    return;
-  }
-
-  state.spawnIn -= dt;
-  if (state.spawnIn <= 0) {
+  // Pop up a mole at every spawn deadline this step crosses, in order, so the
+  // time past each deadline counts toward the next one and ages the new mole.
+  let remaining = dt;
+  while (state.spawnIn <= remaining) {
+    const untilSpawn = Math.max(state.spawnIn, 0);
+    advance(state, untilSpawn);
+    remaining -= untilSpawn;
+    if (state.phase !== 'playing') return;
     const empty = state.holes.filter((hole) => hole.upFor === 0);
     if (empty.length > 0) {
       empty[Math.floor(random() * empty.length)].upFor = upTime(state);
     }
     state.spawnIn = spawnInterval(state);
   }
+  advance(state, remaining);
 }
 
 function draw(ctx: CanvasRenderingContext2D, state: WhackAMoleState) {

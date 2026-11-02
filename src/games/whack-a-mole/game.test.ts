@@ -31,6 +31,27 @@ describe('whack-a-mole', () => {
     expect(state.holes.filter((hole) => hole.upFor > 0)).toHaveLength(1);
   });
 
+  it('pops up the same moles in one large step as in many small steps', () => {
+    // Cycles through holes so each spawn lands somewhere recognisable.
+    const sequence = () => {
+      let n = 0;
+      return () => (n++ * 0.37) % 1;
+    };
+    const large = createState();
+    step(large, 2, sequence());
+    const small = createState();
+    const random = sequence();
+    for (let i = 0; i < 200; i++) step(small, 0.01, random);
+
+    // Spawns at 0.9 s and about 1.77 s, both crossed by the one 2 s step.
+    expect(large.holes.filter((hole) => hole.upFor > 0)).toHaveLength(2);
+    expect(large.timeLeft).toBeCloseTo(small.timeLeft);
+    expect(large.spawnIn).toBeCloseTo(small.spawnIn);
+    large.holes.forEach((hole, i) => {
+      expect(hole.upFor).toBeCloseTo(small.holes[i].upFor);
+    });
+  });
+
   it('drops a mole back down once its time is up', () => {
     const state = createState();
     state.spawnIn = 100;
