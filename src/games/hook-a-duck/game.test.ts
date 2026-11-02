@@ -80,6 +80,20 @@ describe('hook a duck', () => {
     expect(state.hook).toBeNull();
   });
 
+  it('catches the same way however the frames split the landing step', () => {
+    const catchWith = (steps: number[]) => {
+      const state = createState();
+      // Duck 0 is at x = 216, within reach of x = 195, when the hook lands.
+      cast(state, 195, 130);
+      step(state, 0.39);
+      for (const dt of steps) step(state, dt);
+      return { caught: state.ducks[0].caught, score: state.score };
+    };
+    const whole = catchWith([0.05]);
+    expect(whole).toEqual({ caught: true, score: DUCK_NUMBERS[0] });
+    expect(catchWith([0.02, 0.03])).toEqual(whole);
+  });
+
   it('keeps the hook dropping until it reaches the water', () => {
     const state = createState();
     const p = whereAfterDrop(state.ducks[0].distance);

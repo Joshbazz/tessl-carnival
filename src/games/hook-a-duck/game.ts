@@ -100,26 +100,33 @@ export function cast(state: HookADuckState, x: number, y: number): boolean {
   return true;
 }
 
+function floatDucks(state: HookADuckState, dt: number): void {
+  for (const duck of state.ducks) duck.distance = (duck.distance + DUCK_SPEED * dt) % STREAM_LENGTH;
+}
+
 /** Advances the game by `dt` seconds. */
 export function step(state: HookADuckState, dt: number): void {
-  for (const duck of state.ducks) duck.distance = (duck.distance + DUCK_SPEED * dt) % STREAM_LENGTH;
-
-  const hook = state.hook;
-  if (hook) {
-    hook.age += dt;
-    if (hook.age >= DROP_TIME) {
-      const duck = duckAt(state.ducks, hook.x, hook.y);
-      if (duck) {
-        duck.caught = true;
-        state.score += duck.points;
-      }
-      state.splashes.push({ x: hook.x, y: hook.y, points: duck?.points ?? 0, age: 0 });
-      state.hook = null;
-    }
-  }
-
   for (const splash of state.splashes) splash.age += dt;
   state.splashes = state.splashes.filter((s) => s.age < 0.8);
+
+  const hook = state.hook;
+  if (hook && hook.age + dt >= DROP_TIME) {
+    // Catch against where the ducks are when the hook lands, so the result
+    // doesn't depend on how the frames split the time.
+    const toLanding = Math.max(DROP_TIME - hook.age, 0);
+    floatDucks(state, toLanding);
+    const duck = duckAt(state.ducks, hook.x, hook.y);
+    if (duck) {
+      duck.caught = true;
+      state.score += duck.points;
+    }
+    state.splashes.push({ x: hook.x, y: hook.y, points: duck?.points ?? 0, age: dt - toLanding });
+    state.hook = null;
+    floatDucks(state, dt - toLanding);
+  } else {
+    if (hook) hook.age += dt;
+    floatDucks(state, dt);
+  }
 
   if (state.casts === 0 && !state.hook) state.phase = 'over';
 }
