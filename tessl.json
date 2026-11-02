@@ -1,0 +1,14 @@
+{
+  "schedules": {
+    "rule-mining": {
+      "cron": "0 6 * * 1",
+      "description": "Weekly: find mistakes code review keeps catching on pull requests and file issues for rules that would prevent them.",
+      "action": {
+        "skill": "file:tessl-factory#rule-mining",
+        "environment": "tessl-carnival-loops",
+        "agent": "claude-code",
+        "model": "claude-sonnet-5-5"
+      }
+    }
+  }
+}
